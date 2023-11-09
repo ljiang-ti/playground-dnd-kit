@@ -1,3 +1,7 @@
+[![Storybook Pages](https://github.com/ljiang-ti/playground-dnd-kit/actions/workflows/deploy.yaml/badge.svg)](https://github.com/ljiang-ti/playground-dnd-kit/actions/workflows/deploy.yaml)
+
+🎨 [Storybook Docs](https://ljiang-ti.github.io/playground-dnd-kit)
+
 # Playground for dnd kit
 
 In addition to dnd kit's examples, this is the playground for more use cases.
