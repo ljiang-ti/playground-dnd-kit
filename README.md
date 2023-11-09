@@ -6,7 +6,7 @@ In addition to dnd kit's examples, this is the playground for more use cases.
 
 The use cases are written as React components. One can preview these use cases with storybook.
 
-1. Sorting multiple nested containers. See readme here.
+1. Sorting multiple nested containers. See readme [here](src/components/MultipleNestedContainers/README.md).
 
 ## References
 
