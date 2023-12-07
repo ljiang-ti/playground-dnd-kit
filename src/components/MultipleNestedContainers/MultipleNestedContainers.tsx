@@ -414,15 +414,7 @@ export function MultipleNestedContainers({
         clone
         collapsed
         childCount={getChildCount(items, containerId) + 1}
-      >
-        {getDirectChildren(containerId).map((item, index) => (
-          <Item
-            key={item.id}
-            value={item.id}
-            wrapperStyle={wrapperStyle({ index })}
-          />
-        ))}
-      </Container>
+      />
     );
   }
 
