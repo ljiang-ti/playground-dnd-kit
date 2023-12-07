@@ -159,6 +159,17 @@ const MEASURE_STRATEGY = {
   },
 };
 
+function getItemType(depth: number): string {
+  if (depth === 0) {
+    return 'section';
+  }
+
+  if (depth === 1) {
+    return 'lesson';
+  }
+
+  return 'topic';
+}
 
 export function MultipleNestedContainers({
   defaultItems = initialItems,
@@ -171,6 +182,15 @@ export function MultipleNestedContainers({
   const flattenedItems = useMemo(() => {
     const flattenedTree = flattenTree(items);
 
+    // // Option 1) collapse items of the same depth of active item (causing strange UX)
+    // const activeItem = flattenedTree.find(({ id }) => id === activeId)
+    // const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
+    //   (acc, { children, collapsed, id, depth }) =>
+    //     (collapsed || activeItem?.depth === depth) && children.length ? [...acc, id] : acc,
+    //   []
+    // );
+
+    // Option 2) collapse already-collapsed items
     const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
       (acc, { children, collapsed, id }) =>
         collapsed && children.length ? [...acc, id] : acc,
@@ -242,7 +262,7 @@ export function MultipleNestedContainers({
           pointerIntersections
           : rectIntersection(collisionArgs);
       let overId = getFirstCollision(intersections, 'id');
-      
+
       if (overId != null) {
         // Limit droppable containers to parent containers
         const isDraggingLessonOverSection = isDraggingLesson && overId in idMapByDepth[0];
@@ -451,7 +471,7 @@ export function MultipleNestedContainers({
       let newIndex: number;
       let newParentId: UniqueIdentifier | null;
 
-      // Dragging over a parent container
+      // Dragging over a parent container (collapsed or empty container)
       if (isDraggingOverDifferentParent) {
         newIndex = overIndex + overChildCount + 1;
         newParentId = overId;
@@ -479,18 +499,60 @@ export function MultipleNestedContainers({
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
-    // onDragOver updates items for dragging child item into different parent item
-    // onDragEnd updates items for remaining use cases when dragging item over sibling item
-    if (over?.id && active.id !== over.id) {
-      const clonedItems: FlattenedItem[] = JSON.parse(
+    /**
+     * [handleDragOver] updates items when dragging item into different parent,
+     * that includes uses cases of: 
+     * 1. dragging into a collapsed parent (will place item as the last child)
+     * 2. dragging into an empty parent
+     * 3. dragging over an item in a different parent
+     * But it does not include use case of when user continue dragging to change
+     * order with items of the same depth.
+     * For use cases [handleDragOver] does not cover, mostly sorting with other 
+     * items within the same parent, the [handleDragEnd] will cover these and
+     * update items.
+     */
+    if (over?.id && clonedItems) {
+      const clonedItemsCurrent: FlattenedItem[] = JSON.parse(
         JSON.stringify(flattenTree(items))
       );
-      const overIndex = clonedItems.findIndex(({ id }) => id === over.id);
-      const activeIndex = clonedItems.findIndex(({ id }) => id === active.id);
-      const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);
-      const newItems = buildTree(sortedItems);
+      const clonedItemsOriginal: FlattenedItem[] = JSON.parse(
+        JSON.stringify(flattenTree(clonedItems))
+      );
+      const activeIndex = clonedItemsCurrent.findIndex(({ id }) => id === active.id);
+      const activeTreeItem = clonedItemsCurrent[activeIndex];
+      const overIndex = clonedItemsCurrent.findIndex(({ id }) => id === over.id);
+      const overTreeItem = clonedItemsCurrent[overIndex];
+      const activeIndexOriginal = clonedItemsOriginal.findIndex(({ id }) => id === active.id);
+      const activeTreeItemOriginal = clonedItemsOriginal[activeIndexOriginal];
 
-      setItems(newItems);
+      const isDraggedIntoDifferentParent = activeTreeItem.parentId !== activeTreeItemOriginal.parentId;
+      const isDraggedOverSibling = activeTreeItem.parentId === overTreeItem.parentId && active.id !== over.id;
+
+      let newIndexOfParent = activeTreeItem.index;
+      if (isDraggedOverSibling) {
+        const sortedItems = arrayMove(clonedItemsCurrent, activeIndex, overIndex);
+        const newItems = buildTree(sortedItems);
+
+        const clonedNewItems: FlattenedItem[] = JSON.parse(
+          JSON.stringify(flattenTree(newItems))
+        );
+        const newActiveTreeItem = clonedNewItems.find(({ id }) => id === active.id)!;
+        newIndexOfParent = newActiveTreeItem.index;
+
+        setItems(newItems);
+      }
+
+      if (isDraggedIntoDifferentParent || isDraggedOverSibling) {
+        const payload = {
+          id: active.id,
+          type: getItemType(activeTreeItem.depth),
+          newParentId: isDraggedIntoDifferentParent ? activeTreeItem.parentId : undefined,
+          newIndex: newIndexOfParent
+        }
+
+        // TODO: call mutation to save sort. reset to original state if call fails.
+        // Example: saveSort(payload).fail((err) => handleDragCancel());
+      }
     }
 
     resetState();

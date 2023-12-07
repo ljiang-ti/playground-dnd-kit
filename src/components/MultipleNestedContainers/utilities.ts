@@ -25,12 +25,12 @@ export function buildTree(flattenedItems: FlattenedItem[]): TreeItems {
   const items = flattenedItems.map((item) => ({ ...item, children: [] }));
 
   for (const item of items) {
-    const { id, children } = item;
+    const { id, children, collapsed } = item;
     const parentId = item.parentId ?? root.id;
     const parent = nodes[parentId] ?? findItem(items, parentId);
 
     nodes[id] = { id, children };
-    parent.children.push(item);
+    parent.children.push({ id, children, collapsed });
   }
 
   return root.children;
@@ -40,14 +40,16 @@ export function buildIdMapByDepth(flattenedItems: FlattenedItem[]) {
   const map: Record<UniqueIdentifier, UniqueIdentifier[]>[] = [];
 
   for (const item of flattenedItems) {
-    const { id, children, depth } = item;
+    const { id, children, depth, collapsed } = item;
     if (!(depth in map)) {
       map[depth] = {};
     }
     if (!(id in map[depth])) {
       map[depth][id] = [];
     }
-    map[depth][id].push(...pluckItemIds(children));
+    if (!collapsed) {
+      map[depth][id].push(...pluckItemIds(children));
+    }
   }
 
   return map;
