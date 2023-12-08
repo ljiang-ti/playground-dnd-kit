@@ -47,9 +47,7 @@ export function buildIdMapByDepth(flattenedItems: FlattenedItem[]) {
     if (!(id in map[depth])) {
       map[depth][id] = [];
     }
-    if (!collapsed) {
-      map[depth][id].push(...pluckItemIds(children));
-    }
+    map[depth][id].push(...pluckItemIds(children));
   }
 
   return map;

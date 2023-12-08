@@ -44,16 +44,16 @@ import {
 
 function DroppableContainer({
   children,
+  depth,
   disabled,
   id,
   items,
-  type,
   ...props
 }: ContainerProps & {
   disabled?: boolean;
   id: UniqueIdentifier;
   items: UniqueIdentifier[];
-  type: ItemType;
+  depth: number;
   collapsed?: boolean;
 }) {
   const {
@@ -68,13 +68,15 @@ function DroppableContainer({
   } = useSortable({
     id,
     data: {
-      type,
-      children: items,
+      depth
     }
   });
+
+  const isOverSameType = !!over && active?.data.current?.depth === over?.data.current?.depth;
+  const isOverParentType = !!over && active?.data.current?.depth === over?.data.current?.depth + 1;
+  const isOverCollapsedParentType = !!over && active?.data.current?.depth === undefined;
   const isOverContainer = over
-    ? (id === over.id && active?.data.current?.type !== type) ||
-    items.includes(over.id)
+    ? (isOverSameType && items.includes(over.id)) || (isOverParentType && id === over.id) || (isOverCollapsedParentType && !!active?.id && items.includes(active.id))
     : false;
 
   return (
@@ -190,12 +192,15 @@ export function MultipleNestedContainers({
     //   []
     // );
 
-    // Option 2) collapse already-collapsed items
-    const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
-      (acc, { children, collapsed, id }) =>
-        collapsed && children.length ? [...acc, id] : acc,
-      []
-    );
+    // // Option 2) collapse already-collapsed items
+    // const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
+    //   (acc, { children, collapsed, id }) =>
+    //     collapsed && children.length ? [...acc, id] : acc,
+    //   []
+    // );
+
+    // Option 3) keep children of collapsed item
+    const collapsedItems = []
 
     return removeChildrenOf(
       flattenedTree,
@@ -281,7 +286,7 @@ export function MultipleNestedContainers({
                   container.id !== overId &&
                   containerItems.includes(container.id)
               ),
-            })[0]?.id;
+            })[0]?.id || overId;
           }
         }
 
@@ -340,9 +345,9 @@ export function MultipleNestedContainers({
               <DroppableContainer
                 key={section.id}
                 id={section.id}
+                depth={section.depth}
                 label={`${section.id}`}
                 items={pluckItemIds(lessons)}
-                type='section'
                 collapsed={section.collapsed}
                 onCollapse={() => handleCollapse(section.id)}
               >
@@ -353,9 +358,9 @@ export function MultipleNestedContainers({
                       <DroppableContainer
                         key={lesson.id}
                         id={lesson.id}
+                        depth={lesson.depth}
                         label={`${lesson.id}`}
                         items={pluckItemIds(topics)}
-                        type='lesson'
                         disabled={isSortingSection}
                         collapsed={lesson.collapsed}
                         onCollapse={() => handleCollapse(lesson.id)}
@@ -366,6 +371,7 @@ export function MultipleNestedContainers({
                               disabled={isSortingSection || isSortingLesson}
                               key={topic.id}
                               id={topic.id}
+                              depth={topic.depth}
                               index={index}
                               wrapperStyle={wrapperStyle}
                             />
@@ -582,11 +588,13 @@ export function MultipleNestedContainers({
 interface SortableItemProps {
   id: UniqueIdentifier;
   index: number;
+  depth: number;
   disabled?: boolean;
   wrapperStyle({ index }: { index: number }): React.CSSProperties;
 }
 
 function SortableItem({
+  depth,
   disabled,
   id,
   index,
@@ -602,6 +610,9 @@ function SortableItem({
     transition,
   } = useSortable({
     id,
+    data: {
+      depth
+    }
   });
   const mounted = useMountedState();
   const mountedWhileDragging = isDragging && !mounted;
