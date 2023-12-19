@@ -37,6 +37,7 @@ import {
   buildTree,
   flattenTree,
   getChildCount,
+  getTopParentId,
   pluckItemIds,
   removeChildrenOf,
   setProperty
@@ -526,6 +527,21 @@ export function MultipleNestedContainers({
       const isDraggedIntoDifferentParent = activeTreeItem.parentId !== activeTreeItemOriginal.parentId;
       const isDraggedOverSibling = activeTreeItem.parentId === overTreeItem.parentId && active.id !== over.id;
 
+      const affectedTopParentIdSet: Set<UniqueIdentifier> = new Set([]);
+      if (isDraggedIntoDifferentParent) {
+        const draggedFromTopParentId = getTopParentId(clonedItemsOriginal, active.id);
+        const draggedIntoTopParentId = getTopParentId(clonedItemsCurrent, active.id);
+        if (draggedFromTopParentId && draggedIntoTopParentId) {
+          affectedTopParentIdSet.add(draggedFromTopParentId);
+          affectedTopParentIdSet.add(draggedIntoTopParentId);
+        }
+      } else if (isDraggedOverSibling) {
+        const draggedTopParentId = getTopParentId(clonedItemsCurrent, active.id);
+        if (draggedTopParentId) {
+          affectedTopParentIdSet.add(draggedTopParentId);
+        }
+      }
+
       let newIndexOfParent = activeTreeItem.index;
       if (isDraggedOverSibling) {
         const sortedItems = arrayMove(clonedItemsCurrent, activeIndex, overIndex);
@@ -550,6 +566,9 @@ export function MultipleNestedContainers({
 
         // TODO: call mutation to save sort. reset to original state if call fails.
         // Example: saveSort(payload).fail((err) => handleDragCancel());
+
+        // TODO: additional handling for affected top parent ids
+        // Example: window.dispatchEvent(new CustomEvent('topParentUpdate', { detail: { ids: [...Array.from(affectedTopParentIdSet)] } }));
       }
     }
 

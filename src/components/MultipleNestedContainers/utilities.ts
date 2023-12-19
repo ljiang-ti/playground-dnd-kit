@@ -137,3 +137,37 @@ export function removeChildrenOf(
     return true;
   });
 }
+
+export function getTopParentId(
+  items: TreeItem[], 
+  itemId: UniqueIdentifier,
+  currentTopParentId: UniqueIdentifier | null = null,
+): UniqueIdentifier | undefined {
+  for (const item of items) {
+    const { id, children } = item;
+
+    // Queried item is already top parent
+    if (id === itemId && currentTopParentId === null) {
+      return itemId;
+    }
+
+    // Queried item is child of current top parent
+    if (id === itemId && currentTopParentId !== null) {
+      return currentTopParentId;
+    }
+
+    if (children.length) {
+      const childTopParentId = getTopParentId(
+        children, 
+        itemId,
+        currentTopParentId || id
+      );
+
+      if (childTopParentId) {
+        return childTopParentId;
+      }
+    }
+  }
+
+  return undefined;
+}
